@@ -1,0 +1,1 @@
+Attempting to work through coding a rubik's cube recursively by automating the writing-code part using Gemini pro. First attempt to "vibe code." Final solution works but is incredibly slow and only works for very shallow solves.
