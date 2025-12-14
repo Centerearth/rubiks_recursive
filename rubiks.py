@@ -152,122 +152,79 @@ class Rubik:
         
         self.cube[face_name] = new_face
 
+    def _cycle_pieces(self, cycles):
+        """
+        Cycles pieces according to the provided coordinate lists.
+        Each cycle is a list of 4 tuples: (face, row, col).
+        The value moves from index 0 -> 1 -> 2 -> 3 -> 0.
+        """
+        for p1, p2, p3, p4 in cycles:
+            v1 = self.cube[p1[0]][p1[1]][p1[2]]
+            v2 = self.cube[p2[0]][p2[1]][p2[2]]
+            v3 = self.cube[p3[0]][p3[1]][p3[2]]
+            v4 = self.cube[p4[0]][p4[1]][p4[2]]
+            
+            self.cube[p2[0]][p2[1]][p2[2]] = v1
+            self.cube[p3[0]][p3[1]][p3[2]] = v2
+            self.cube[p4[0]][p4[1]][p4[2]] = v3
+            self.cube[p1[0]][p1[1]][p1[2]] = v4
+
     def move_f_clockwise(self):
         """
         Performs a clockwise rotation of the Front (F) face.
         This modifies the object's internal state.
         """
-        
         self._rotate_face_clockwise('F')
-        
-        temp_up_row = self.cube['U'][2][:]
-        
-        self.cube['U'][2][0] = self.cube['L'][2][2]
-        self.cube['U'][2][1] = self.cube['L'][1][2]
-        self.cube['U'][2][2] = self.cube['L'][0][2]
-        
-        self.cube['L'][0][2] = self.cube['D'][0][0]
-        self.cube['L'][1][2] = self.cube['D'][0][1]
-        self.cube['L'][2][2] = self.cube['D'][0][2]
-        
-        self.cube['D'][0][0] = self.cube['R'][2][0]
-        self.cube['D'][0][1] = self.cube['R'][1][0]
-        self.cube['D'][0][2] = self.cube['R'][0][0]
-        
-        self.cube['R'][0][0] = temp_up_row[0]
-        self.cube['R'][1][0] = temp_up_row[1]
-        self.cube['R'][2][0] = temp_up_row[2]
+        self._cycle_pieces([
+            [('U', 2, 0), ('R', 0, 0), ('D', 0, 2), ('L', 2, 2)],
+            [('U', 2, 1), ('R', 1, 0), ('D', 0, 1), ('L', 1, 2)],
+            [('U', 2, 2), ('R', 2, 0), ('D', 0, 0), ('L', 0, 2)],
+        ])
 
     def move_u_clockwise(self):
         """ Performs a clockwise rotation of the Up (U) face. """
-        
         self._rotate_face_clockwise('U')
-        
-        temp_row = self.cube['F'][0][:]
-        self.cube['F'][0] = self.cube['L'][0][:]
-        self.cube['L'][0] = self.cube['B'][0][:]
-        self.cube['B'][0] = self.cube['R'][0][:]
-        self.cube['R'][0] = temp_row
+        self._cycle_pieces([
+            [('F', 0, 0), ('R', 0, 0), ('B', 0, 0), ('L', 0, 0)],
+            [('F', 0, 1), ('R', 0, 1), ('B', 0, 1), ('L', 0, 1)],
+            [('F', 0, 2), ('R', 0, 2), ('B', 0, 2), ('L', 0, 2)],
+        ])
 
     def move_d_clockwise(self):
         """ Performs a clockwise rotation of the Down (D) face. """
-        
         self._rotate_face_clockwise('D')
-        
-        temp_row = self.cube['F'][2][:]
-        self.cube['F'][2] = self.cube['R'][2][:]
-        self.cube['R'][2] = self.cube['B'][2][:]
-        self.cube['B'][2] = self.cube['L'][2][:]
-        self.cube['L'][2] = temp_row
+        self._cycle_pieces([
+            [('F', 2, 0), ('L', 2, 0), ('B', 2, 0), ('R', 2, 0)],
+            [('F', 2, 1), ('L', 2, 1), ('B', 2, 1), ('R', 2, 1)],
+            [('F', 2, 2), ('L', 2, 2), ('B', 2, 2), ('R', 2, 2)],
+        ])
 
     def move_r_clockwise(self):
         """ Performs a clockwise rotation of the Right (R) face. """
-        
         self._rotate_face_clockwise('R')
-        
-        temp_col = [self.cube['U'][0][2], self.cube['U'][1][2], self.cube['U'][2][2]]
-        
-        self.cube['U'][0][2] = self.cube['F'][0][2]
-        self.cube['U'][1][2] = self.cube['F'][1][2]
-        self.cube['U'][2][2] = self.cube['F'][2][2]
-        
-        self.cube['F'][0][2] = self.cube['D'][0][2]
-        self.cube['F'][1][2] = self.cube['D'][1][2]
-        self.cube['F'][2][2] = self.cube['D'][2][2]
-
-        self.cube['D'][0][2] = self.cube['B'][2][0]
-        self.cube['D'][1][2] = self.cube['B'][1][0]
-        self.cube['D'][2][2] = self.cube['B'][0][0]
-        
-        self.cube['B'][0][0] = temp_col[2]
-        self.cube['B'][1][0] = temp_col[1]
-        self.cube['B'][2][0] = temp_col[0]
+        self._cycle_pieces([
+            [('U', 0, 2), ('B', 2, 0), ('D', 0, 2), ('F', 0, 2)],
+            [('U', 1, 2), ('B', 1, 0), ('D', 1, 2), ('F', 1, 2)],
+            [('U', 2, 2), ('B', 0, 0), ('D', 2, 2), ('F', 2, 2)],
+        ])
 
     def move_l_clockwise(self):
         """ Performs a clockwise rotation of the Left (L) face. """
-        
         self._rotate_face_clockwise('L')
-        
-        temp_col = [self.cube['U'][0][0], self.cube['U'][1][0], self.cube['U'][2][0]]
-        
-        self.cube['U'][0][0] = self.cube['B'][2][2]
-        self.cube['U'][1][0] = self.cube['B'][1][2]
-        self.cube['U'][2][0] = self.cube['B'][0][2]
-
-        self.cube['B'][0][2] = self.cube['D'][2][0]
-        self.cube['B'][1][2] = self.cube['D'][1][0]
-        self.cube['B'][2][2] = self.cube['D'][0][0]
-
-        self.cube['D'][0][0] = self.cube['F'][0][0]
-        self.cube['D'][1][0] = self.cube['F'][1][0]
-        self.cube['D'][2][0] = self.cube['F'][2][0]
-
-        self.cube['F'][0][0] = temp_col[0]
-        self.cube['F'][1][0] = temp_col[1]
-        self.cube['F'][2][0] = temp_col[2]
+        self._cycle_pieces([
+            [('U', 0, 0), ('F', 0, 0), ('D', 0, 0), ('B', 2, 2)],
+            [('U', 1, 0), ('F', 1, 0), ('D', 1, 0), ('B', 1, 2)],
+            [('U', 2, 0), ('F', 2, 0), ('D', 2, 0), ('B', 0, 2)],
+        ])
         
     def move_b_clockwise(self):
         """ Performs a clockwise rotation of the Back (B) face. """
-        
         self._rotate_face_clockwise('B')
-        
-        temp_row = self.cube['U'][0][:]
-
-        self.cube['U'][0][0] = self.cube['R'][2][2]
-        self.cube['U'][0][1] = self.cube['R'][1][2]
-        self.cube['U'][0][2] = self.cube['R'][0][2]
-
-        self.cube['R'][0][2] = self.cube['D'][2][0]
-        self.cube['R'][1][2] = self.cube['D'][2][1]
-        self.cube['R'][2][2] = self.cube['D'][2][2]
-
-        self.cube['D'][2][0] = self.cube['L'][2][0]
-        self.cube['D'][2][1] = self.cube['L'][1][0]
-        self.cube['D'][2][2] = self.cube['L'][0][0]
-
-        self.cube['L'][0][0] = temp_row[0]
-        self.cube['L'][1][0] = temp_row[1]
-        self.cube['L'][2][0] = temp_row[2]
+        self._cycle_pieces([
+            [('U', 0, 0), ('L', 0, 0), ('D', 2, 2), ('R', 2, 2)],
+            [('U', 0, 1), ('L', 1, 0), ('D', 2, 1), ('R', 1, 2)],
+            [('U', 0, 2), ('L', 2, 0), ('D', 2, 0), ('R', 0, 2)],
+        ])
 
     def move_f_counter_clockwise(self):
         """ Performs a counter-clockwise rotation of the Front (F) face. """
