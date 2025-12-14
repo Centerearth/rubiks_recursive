@@ -376,6 +376,12 @@ class Rubik:
         self.move_b_clockwise()
 
     # --- NEW SOLVER & HELPER METHODS ---
+    
+    def _get_inverse_move_name(self, move_name):
+        """Helper to get the inverse move name."""
+        if move_name.endswith('_inv'):
+            return move_name[:-4]
+        return move_name + '_inv'
 
     def scramble(self, num_moves=20):
         """
@@ -427,35 +433,37 @@ class Rubik:
         """
         print(f"Attempting to solve in a maximum of {max_moves} moves...")
         
+        # Save the initial state so we can restore it after the search.
+        # This allows the recursive search to modify the cube in-place (much faster).
+        initial_state_backup = self.get_state()
+
         # Iterative Deepening: Search at depth 0, 1, 2, ...
         for depth in range(max_moves + 1):
             print(f"  Searching at depth: {depth}")
-            # Get a clean copy of the current state to pass
-            initial_state_dict = self.get_state()
             
-            solution_path = self._recursive_search(initial_state_dict, [], depth)
+            # Perform search (modifies self in-place, then backtracks)
+            solution_path = self._recursive_search([], depth)
             
             if solution_path is not None:
                 print(f"\nSolution found in {len(solution_path)} moves!")
                 print(f"  Path: {' '.join(solution_path)}")
+                # Restore the cube to its original state before returning
+                self.set_state(initial_state_backup)
                 return solution_path
                 
+        # Restore state if no solution found
+        self.set_state(initial_state_backup)
         print(f"\nNo solution found within {max_moves} moves.")
         return None
 
-    def _recursive_search(self, current_state_dict, path, depth_limit):
+    def _recursive_search(self, path, depth_limit):
         """
         Recursive helper for the 'solve' method.
-        
-        :param current_state_dict: The state to check (as a dictionary).
-        :param path: The list of moves taken to get here (e.g., ['F', 'U']).
-        :param depth_limit: The maximum depth for this search.
+        Uses backtracking to avoid expensive deep copies.
         """
         
         # --- Base Case 1: Success ---
-        # Create a temporary cube object to check the state
-        temp_cube = Rubik(initial_state=current_state_dict)
-        if temp_cube.is_solved():
+        if self.is_solved():
             return path # We found a solution!
             
         # --- Base Case 2: Failure (Depth Limit Reached) ---
@@ -484,26 +492,33 @@ class Rubik:
                     path[-2] == last_move and 
                     move_name == last_move):
                     continue
+                
+                # 3. Commutativity Pruning
+                # Avoid searching redundant paths like U D vs D U.
+                # We enforce a specific order for opposite faces.
+                current_face = move_name[0]
+                last_face = last_move[0]
+                
+                # Block: F after B, R after L, U after D
+                if (last_face == 'B' and current_face == 'F') or \
+                   (last_face == 'L' and current_face == 'R') or \
+                   (last_face == 'D' and current_face == 'U'):
+                    continue
 
-            # --- Create New State (The "Deep Copy" part) ---
-            # 1. Create a new cube instance from the *current* state
-            new_cube = Rubik(initial_state=current_state_dict)
-            
-            # 2. Get the specific move function (e.g., new_cube.move_f_clockwise)
-            move_function = getattr(new_cube, method_name)
-            
-            # 3. Perform the move *on the new cube*
+            # --- Apply Move (In-Place) ---
+            move_function = getattr(self, method_name)
             move_function()
             
-            # 4. Recurse with the new state and updated path
-            new_state_dict = new_cube.get_state()
-            new_path = path + [move_name]
+            # --- Recurse ---
+            result = self._recursive_search(path + [move_name], depth_limit)
             
-            result = self._recursive_search(new_state_dict, new_path, depth_limit)
-            
-            # 5. Check if the recursive call found a solution
             if result is not None:
                 return result # Pass the solution up the chain
+            
+            # --- Backtrack: Undo the move ---
+            inverse_move = self._get_inverse_move_name(move_name)
+            inverse_method = self.MOVE_MAPPING[inverse_move]
+            getattr(self, inverse_method)()
         
         # If we loop through all moves and find no solution, backtrack
         return None
@@ -537,7 +552,6 @@ if solution:
 
 # 5. Example of a failed solve
 print("\n--- Testing a Failed Solve ---")
-my_cube.scramble(num_moves=5) # Scramble with 5
-solution_fail = my_cube.solve(max_moves=3) # Try to solve in 3
+my_cube.scramble(num_moves=7) # Scramble with 5
+solution_fail = my_cube.solve(max_moves=7) # Try to solve in 5
 print(f"Solution found: {solution_fail}") # Will be None
-
