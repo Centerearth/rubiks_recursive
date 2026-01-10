@@ -3,14 +3,29 @@ from rubiks import Rubik
 def main():
     my_cube = Rubik()
 
-    SCRAMBLE_MOVES = 3
     while True:
-        try:
-            SCRAMBLE_MOVES = input("Please enter number of scramble moves: ")
-            SCRAMBLE_MOVES = int(SCRAMBLE_MOVES)
+        mode = input("Enter '1' for Random Scramble, '2' for Manual Input: ")
+        if mode in ('1', '2'):
             break
-        except ValueError:
-            print("Invalid input. Please enter a valid integer.")
+
+    if mode == '1':
+        SCRAMBLE_MOVES = 3
+        while True:
+            try:
+                SCRAMBLE_MOVES = input("Please enter number of scramble moves: ")
+                SCRAMBLE_MOVES = int(SCRAMBLE_MOVES)
+                break
+            except ValueError:
+                print("Invalid input. Please enter a valid integer.")
+        my_cube.scramble(num_moves=SCRAMBLE_MOVES)
+    else:
+        print("\nEnter the 54-character state string.")
+        print("Order: U, D, F, B, R, L")
+        print("Colors: W, Y, G, B, R, O")
+        while True:
+            state_str = input("State: ").strip()
+            if my_cube.load_state_from_string(state_str):
+                break
 
     while True:
         try:
@@ -23,9 +38,7 @@ def main():
         except ValueError:
             print("Invalid input.")
         
-    my_cube.scramble(num_moves=SCRAMBLE_MOVES)
-
-    print("\n--- State After Scramble ---")
+    print("\n--- Current State ---")
     my_cube.display()
 
     if DEPTH > 7:

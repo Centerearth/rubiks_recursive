@@ -145,6 +145,32 @@ class Rubik:
             for sticker in row
         )
 
+    def load_state_from_string(self, state_str):
+        """
+        Parses a 54-character string into the cube state.
+        Order: U, D, F, B, R, L (row by row, left to right).
+        """
+        if len(state_str) != 54:
+            print("Error: State string must be exactly 54 characters long.")
+            return False
+            
+        faces = ['U', 'D', 'F', 'B', 'R', 'L']
+        idx = 0
+        new_state = {}
+        
+        for face in faces:
+            face_grid = []
+            for r in range(3):
+                row = []
+                for c in range(3):
+                    row.append(state_str[idx])
+                    idx += 1
+                face_grid.append(row)
+            new_state[face] = face_grid
+            
+        self.cube = new_state
+        return True
+
     def _rotate_face_clockwise(self, face_name):
         """
         Rotates the 9 stickers on a single given face clockwise.
