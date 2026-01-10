@@ -134,13 +134,12 @@ class Rubik:
         self.cube = new_state
     
     def get_hash(self):
-        hash_str = ''
-        # Iterate over faces in a fixed order to ensure the hash is deterministic
-        for face_name in ['U', 'D', 'F', 'B', 'R', 'L']:
-            for row in self.cube[face_name]:
-                for sticker in row:
-                    hash_str += sticker
-        return hash_str
+        return "".join(
+            sticker
+            for face_name in ['U', 'D', 'F', 'B', 'R', 'L']
+            for row in self.cube[face_name]
+            for sticker in row
+        )
 
     def _rotate_face_clockwise(self, face_name):
         """
