@@ -17,6 +17,8 @@ class Rubik:
             self.cube = copy.deepcopy(initial_state)
         else:
             self.cube = self._get_solved_state_dict()
+        
+        self.all_hashes = {}
 
         self.MOVE_MAPPING = {
             'F': 'move_f_clockwise',
@@ -132,12 +134,13 @@ class Rubik:
         self.cube = new_state
     
     def get_hash(self):
-        hash = ''
-        for face in self.cube.values():
-            for row in face:
+        hash_str = ''
+        # Iterate over faces in a fixed order to ensure the hash is deterministic
+        for face_name in ['U', 'D', 'F', 'B', 'R', 'L']:
+            for row in self.cube[face_name]:
                 for sticker in row:
-                    hash += sticker
-        return hash
+                    hash_str += sticker
+        return hash_str
 
     def _rotate_face_clockwise(self, face_name):
         """
@@ -310,7 +313,7 @@ class Rubik:
             else:
                 print(f"Warning: Unknown move '{move_name}' skipped.")
 
-    def solve(self, max_moves=7):
+    def solve(self, max_moves=7, hash=False):
         """
         Attempts to solve the cube using Iterative Deepening
         Depth-First Search (IDDFS).
@@ -323,55 +326,61 @@ class Rubik:
         only find solutions for shallow scrambles (e.g., < 7 moves).
         A full "God's Number" solver is vastly more complex.
         """
-        print(f"Attempting to solve in a maximum of {max_moves} moves...")
+        if hash:
+            max_down_moves = max_moves
+            print(f"Attempting to solve in a maximum of {max_moves*2} moves...")
+        else:
+            print(f"Attempting to solve in a maximum of {max_moves} moves...")
         
         initial_state_backup = self.get_state()
 
         for depth in range(max_moves + 1):
             print(f"  Searching at depth: {depth}")
             
-            solution_path = self._recursive_search([], depth)
+            solution_path = self._recursive_search([], depth, hash)
             
             if solution_path is not None:
                 print(f"\nSolution found in {len(solution_path)} moves!")
                 print(f"  Path: {' '.join(solution_path)}")
                 self.set_state(initial_state_backup)
                 return solution_path
+            
+        if hash:
+            self.set_state(self._get_solved_state_dict())
+            for depth in range(max_down_moves + 1):
+                print(f"  Searching at backwards depth: {depth}")
+
+                full_solution_path = self._recursive_search([], depth, False, hash)
+                
+                if full_solution_path is not None:
+                    print(f"\nSolution found in {len(full_solution_path)} moves!")
+                    print(f"  Path: {' '.join(full_solution_path)}")
+                    self.set_state(initial_state_backup)
+                    return full_solution_path
                 
         self.set_state(initial_state_backup)
-        print(f"\nNo solution found within {max_moves} moves.")
+
+        if hash:
+            print(f"\nNo solution found within {max_moves*2} moves.")
+        else:
+            print(f"\nNo solution found within {max_moves} moves.")
         return None
-    
-    # def solve_bi_directional(self, max_up_moves=7, max_down_moves=7):
-    #     """
-    #     A meet-in-the middle approach to solving.
-    #     """
-        
-    #     initial_state_backup = self.get_state()
 
-    #     for depth in range(max_up_moves + 1):
-    #         print(f"  Searching at depth: {depth}")
-            
-    #         solution_path = self._recursive_search([], depth)
-            
-    #         if solution_path is not None:
-    #             print(f"\nSolution found in {len(solution_path)} moves!")
-    #             print(f"  Path: {' '.join(solution_path)}")
-    #             self.set_state(initial_state_backup)
-    #             return solution_path
-                
-    #     self.set_state(initial_state_backup)
-    #     return None
-
-    def _recursive_search(self, path, depth_limit, hash=False):
+    def _recursive_search(self, path, depth_limit, hash_up=False, hash_down=False):
         """
         Recursive helper for the 'solve' method.
         Uses backtracking to avoid expensive deep copies.
         """
-        if self.is_solved():
-            return path
+        if not hash_down:
+            if self.is_solved():
+                return path
+        else:
+            if self.get_hash() in self.all_hashes:
+                return self.all_hashes[self.get_hash()] + [self._get_inverse_move_name(m) for m in reversed(path)]
             
         if len(path) == depth_limit:
+            if hash_up:
+                self.all_hashes[self.get_hash()] = path
             return None
             
         last_move = path[-1] if path else None
@@ -400,8 +409,8 @@ class Rubik:
 
             move_function = getattr(self, method_name)
             move_function()
-            
-            result = self._recursive_search(path + [move_name], depth_limit)
+
+            result = self._recursive_search(path + [move_name], depth_limit, hash_up, hash_down)
             
             if result is not None:
                 return result
@@ -411,4 +420,3 @@ class Rubik:
             getattr(self, inverse_method)()
             
         return None
-
