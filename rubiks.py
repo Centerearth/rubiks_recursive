@@ -130,6 +130,14 @@ class Rubik:
         Sets the cube's state to a new state.
         """
         self.cube = new_state
+    
+    def get_hash(self):
+        hash = ''
+        for face in self.cube.values():
+            for row in face:
+                for sticker in row:
+                    hash += sticker
+        return hash
 
     def _rotate_face_clockwise(self, face_name):
         """
@@ -333,13 +341,33 @@ class Rubik:
         self.set_state(initial_state_backup)
         print(f"\nNo solution found within {max_moves} moves.")
         return None
+    
+    # def solve_bi_directional(self, max_up_moves=7, max_down_moves=7):
+    #     """
+    #     A meet-in-the middle approach to solving.
+    #     """
+        
+    #     initial_state_backup = self.get_state()
 
-    def _recursive_search(self, path, depth_limit):
+    #     for depth in range(max_up_moves + 1):
+    #         print(f"  Searching at depth: {depth}")
+            
+    #         solution_path = self._recursive_search([], depth)
+            
+    #         if solution_path is not None:
+    #             print(f"\nSolution found in {len(solution_path)} moves!")
+    #             print(f"  Path: {' '.join(solution_path)}")
+    #             self.set_state(initial_state_backup)
+    #             return solution_path
+                
+    #     self.set_state(initial_state_backup)
+    #     return None
+
+    def _recursive_search(self, path, depth_limit, hash=False):
         """
         Recursive helper for the 'solve' method.
         Uses backtracking to avoid expensive deep copies.
         """
-        
         if self.is_solved():
             return path
             
@@ -366,8 +394,8 @@ class Rubik:
                 last_face = last_move[0]
                 
                 if (last_face == 'B' and current_face == 'F') or \
-                   (last_face == 'L' and current_face == 'R') or \
-                   (last_face == 'D' and current_face == 'U'):
+                (last_face == 'L' and current_face == 'R') or \
+                (last_face == 'D' and current_face == 'U'):
                     continue
 
             move_function = getattr(self, method_name)
@@ -381,5 +409,6 @@ class Rubik:
             inverse_move = self._get_inverse_move_name(move_name)
             inverse_method = self.MOVE_MAPPING[inverse_move]
             getattr(self, inverse_method)()
-        
+            
         return None
+
