@@ -134,6 +134,10 @@ class Rubik:
         self.cube = new_state
     
     def get_hash(self):
+        """
+        Generates a unique string representation of the current cube state.
+        Used as a key in the hash map for bidirectional search.
+        """
         return "".join(
             sticker
             for face_name in ['U', 'D', 'F', 'B', 'R', 'L']
@@ -148,16 +152,19 @@ class Rubik:
         face = self.cube[face_name]
         new_face = [['', '', ''], ['', '', ''], ['', '', '']]
         
+        # Rotate Corners
         new_face[0][0] = face[2][0]
         new_face[0][2] = face[0][0]
         new_face[2][2] = face[0][2]
         new_face[2][0] = face[2][2]
         
+        # Rotate Edges
         new_face[0][1] = face[1][0]
         new_face[1][2] = face[0][1]
         new_face[2][1] = face[1][2]
         new_face[1][0] = face[2][1]
         
+        # Center remains same
         new_face[1][1] = face[1][1]
         
         self.cube[face_name] = new_face
@@ -167,13 +174,16 @@ class Rubik:
         Cycles pieces according to the provided coordinate lists.
         Each cycle is a list of 4 tuples: (face, row, col).
         The value moves from index 0 -> 1 -> 2 -> 3 -> 0.
+        Used to update the stickers on the sides of the rotated face.
         """
         for p1, p2, p3, p4 in cycles:
+            # Save current values
             v1 = self.cube[p1[0]][p1[1]][p1[2]]
             v2 = self.cube[p2[0]][p2[1]][p2[2]]
             v3 = self.cube[p3[0]][p3[1]][p3[2]]
             v4 = self.cube[p4[0]][p4[1]][p4[2]]
             
+            # Assign new values (shifting clockwise)
             self.cube[p2[0]][p2[1]][p2[2]] = v1
             self.cube[p3[0]][p3[1]][p3[2]] = v2
             self.cube[p4[0]][p4[1]][p4[2]] = v3
@@ -317,13 +327,14 @@ class Rubik:
         Attempts to solve the cube using Iterative Deepening
         Depth-First Search (IDDFS).
         
-        Starts searching for a solution of depth 1, then 2, etc.,
-        up to 'max_moves'. This guarantees the first solution
-        found is the shortest.
-        
+        If hash=True, it performs a bidirectional search (Meet-in-the-middle).
+        1. Search forward from the scrambled state up to max_moves depth, storing states.
+        2. Search backward from the solved state up to max_moves depth, checking for collisions.
+
+        This guarantees the first solution found is the shortest.
+
         NOTE: This simple algorithm is EXTREMELY slow and will
-        only find solutions for shallow scrambles (e.g., < 7 moves).
-        A full "God's Number" solver is vastly more complex.
+        only find solutions for shallow scrambles (e.g., < 14 moves).
         """
         if hash:
             max_down_moves = max_moves
@@ -333,9 +344,11 @@ class Rubik:
         
         initial_state_backup = self.get_state()
 
+        # --- Phase 1: Forward Search ---
         for depth in range(max_moves + 1):
             print(f"  Searching at depth: {depth}")
             
+            # hash_up=True means we store the end states of this search in self.all_hashes
             solution_path = self._recursive_search([], depth, hash)
             
             if solution_path is not None:
@@ -344,11 +357,13 @@ class Rubik:
                 self.set_state(initial_state_backup)
                 return solution_path
             
+        # --- Phase 2: Backward Search (Bidirectional) ---
         if hash:
             self.set_state(self._get_solved_state_dict())
             for depth in range(max_down_moves + 1):
                 print(f"  Searching at backwards depth: {depth}")
 
+                # hash_down=True means we check if current state exists in self.all_hashes
                 full_solution_path = self._recursive_search([], depth, False, hash)
                 
                 if full_solution_path is not None:
@@ -370,15 +385,20 @@ class Rubik:
         Recursive helper for the 'solve' method.
         Uses backtracking to avoid expensive deep copies.
         """
+        # Base Case: Check if we found a solution or a meeting point
         if not hash_down:
+            # Standard search: check if solved
             if self.is_solved():
                 return path
         else:
+            # Backward search: check if current state matches a state from forward search
             if self.get_hash() in self.all_hashes:
                 return self.all_hashes[self.get_hash()] + [self._get_inverse_move_name(m) for m in reversed(path)]
             
+        # Base Case: Depth limit reached
         if len(path) == depth_limit:
             if hash_up:
+                # Store state for bidirectional search
                 self.all_hashes[self.get_hash()] = path
             return None
             
@@ -387,17 +407,22 @@ class Rubik:
         for move_name, method_name in self.MOVE_MAPPING.items():
             
             if last_move:
+                # 1. Don't immediately reverse the last move (e.g., F then F')
                 if '_inv' in last_move and last_move.replace('_inv', '') == move_name:
                     continue
                 if '_inv' not in last_move and last_move + '_inv' == move_name:
                     continue
                 
+                # 2. Don't do the same move 3 times (e.g., F F F is same as F')
+                # This heuristic prunes paths like F F F, preferring F' instead.
                 if (len(path) >= 2 and 
                     path[-1] == last_move and 
                     path[-2] == last_move and 
                     move_name == last_move):
                     continue
                 
+                # 3. Commutative moves pruning (e.g., treat F B and B F as same, pick one order)
+                # This enforces an order on independent faces to reduce search space.
                 current_face = move_name[0]
                 last_face = last_move[0]
                 
@@ -406,14 +431,17 @@ class Rubik:
                 (last_face == 'D' and current_face == 'U'):
                     continue
 
+            # Apply move
             move_function = getattr(self, method_name)
             move_function()
 
+            # Recurse
             result = self._recursive_search(path + [move_name], depth_limit, hash_up, hash_down)
             
             if result is not None:
                 return result
             
+            # Backtrack (undo move)
             inverse_move = self._get_inverse_move_name(move_name)
             inverse_method = self.MOVE_MAPPING[inverse_move]
             getattr(self, inverse_method)()
